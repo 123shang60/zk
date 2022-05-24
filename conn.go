@@ -113,6 +113,8 @@ type Conn struct {
 	logInfo bool // true if information messages are logged; false if only errors are logged
 
 	buf []byte
+
+	saslConfig *SASLConfig
 }
 
 // connOption represents a connection option.
@@ -205,6 +207,10 @@ func Connect(servers []string, sessionTimeout time.Duration, options ...connOpti
 		logInfo:        true, // default is true for backwards compatability
 		buf:            make([]byte, bufferSize),
 		resendZkAuthFn: resendZkAuth,
+		saslConfig: &SASLConfig{
+			Enable:         false,
+			KerberosConfig: nil,
+		},
 	}
 
 	// Set provided options.
@@ -307,6 +313,12 @@ func WithMaxBufferSize(maxBufferSize int) connOption {
 func WithMaxConnBufferSize(maxBufferSize int) connOption {
 	return func(c *Conn) {
 		c.buf = make([]byte, maxBufferSize)
+	}
+}
+
+func WithSASLConfig(config *SASLConfig) connOption {
+	return func(c *Conn) {
+		c.saslConfig = config
 	}
 }
 
@@ -867,7 +879,13 @@ func (c *Conn) recvLoop(conn net.Conn) error {
 				if req.recvFunc != nil {
 					req.recvFunc(req, &res, err)
 				}
-				req.recvChan <- response{res.Zxid, err}
+				if req.opcode == opSetSASL && c.saslConfig.Enable && err == ErrShortBuffer && res.Err == 0 {
+					req.recvStruct = setSaslResponse{string([]byte{})}
+					err = nil
+				}
+				req.recvChan <- response{
+					res.Zxid, err,
+				}
 				if req.opcode == opClose {
 					return io.EOF
 				}
@@ -1345,6 +1363,18 @@ func resendZkAuth(ctx context.Context, c *Conn) error {
 
 	c.credsMu.Lock()
 	defer c.credsMu.Unlock()
+
+	var krbAuth = &KerberosAuth{Config: c.saslConfig.KerberosConfig}
+	if err := krbAuth.Authorize(ctx, c); err != nil {
+		if c.logInfo {
+			c.logger.Printf("failed to authorize with kerberos, err: %s", err)
+		}
+		return err
+	} else {
+		if c.logInfo {
+			c.logger.Printf("kerberos authorize successfully")
+		}
+	}
 
 	if c.logInfo {
 		c.logger.Printf("re-submitting `%d` credentials after reconnect", len(c.creds))
