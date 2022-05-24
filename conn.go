@@ -1363,16 +1363,17 @@ func resendZkAuth(ctx context.Context, c *Conn) error {
 
 	c.credsMu.Lock()
 	defer c.credsMu.Unlock()
-
-	var krbAuth = &KerberosAuth{Config: c.saslConfig.KerberosConfig}
-	if err := krbAuth.Authorize(ctx, c); err != nil {
-		if c.logInfo {
-			c.logger.Printf("failed to authorize with kerberos, err: %s", err)
-		}
-		return err
-	} else {
-		if c.logInfo {
-			c.logger.Printf("kerberos authorize successfully")
+	if c.saslConfig.Enable {
+		var krbAuth = &KerberosAuth{Config: c.saslConfig.KerberosConfig}
+		if err := krbAuth.Authorize(ctx, c); err != nil {
+			if c.logInfo {
+				c.logger.Printf("failed to authorize with kerberos, err: %s", err)
+			}
+			return err
+		} else {
+			if c.logInfo {
+				c.logger.Printf("kerberos authorize successfully")
+			}
 		}
 	}
 
