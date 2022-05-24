@@ -28,7 +28,6 @@ type KerberosConfig struct {
 	Keytab       []byte
 	Krb5         string
 	PrincipalStr string
-	Username     string
 }
 
 const (
@@ -90,7 +89,7 @@ func newKerberosClient(c *KerberosConfig) (*krb5client.Client, *Principal, error
 		if err := keytab.Unmarshal(c.Keytab); err != nil {
 			return nil, principal, err
 		} else {
-			return krb5client.NewWithKeytab(c.Username, principal.Realm, keytab, krb5cfg), principal, nil
+			return krb5client.NewWithKeytab(strings.Join(principal.Components, "/"), principal.Realm, keytab, krb5cfg), principal, nil
 		}
 	}
 }
