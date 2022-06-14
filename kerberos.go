@@ -28,6 +28,7 @@ type KerberosConfig struct {
 	Keytab       []byte
 	Krb5         string
 	PrincipalStr string
+	ServiceName  string
 }
 
 const (
@@ -141,7 +142,18 @@ func (k *KerberosAuth) Authorize(ctx context.Context, c *Conn) error {
 	}
 	defer krbCli.Destroy()
 
-	spn := strings.Join(principal.Components, "/")
+	//spn := strings.Join(principal.Components, "/")
+	spn := func() string {
+		serviceName := "zookeeper"
+		if c.saslConfig.KerberosConfig.ServiceName != "" {
+			serviceName = c.saslConfig.KerberosConfig.ServiceName
+		}
+		if len(principal.Components) == 0 {
+			return serviceName
+		}
+		principal.Components[0] = serviceName
+		return strings.Join(principal.Components, "/")
+	}()
 
 	if k.ticket, k.encKey, err = krbCli.GetServiceTicket(spn); err != nil {
 		return fmt.Errorf("kerberos client fails to obtain service ticket, err: %s", err)
