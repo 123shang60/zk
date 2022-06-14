@@ -210,7 +210,6 @@ func Connect(servers []string, sessionTimeout time.Duration, options ...connOpti
 		saslConfig: &SASLConfig{
 			Enable:         false,
 			KerberosConfig: nil,
-			ServiceName:    "zookeeper",
 		},
 	}
 

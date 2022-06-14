@@ -22,13 +22,13 @@ import (
 type SASLConfig struct {
 	Enable         bool
 	KerberosConfig *KerberosConfig
-	ServiceName    string
 }
 
 type KerberosConfig struct {
 	Keytab       []byte
 	Krb5         string
 	PrincipalStr string
+	ServiceName  string
 }
 
 const (
@@ -145,9 +145,9 @@ func (k *KerberosAuth) Authorize(ctx context.Context, c *Conn) error {
 	//spn := strings.Join(principal.Components, "/")
 	spn := func() string {
 		if len(principal.Components) == 0 {
-			return c.saslConfig.ServiceName
+			return c.saslConfig.KerberosConfig.ServiceName
 		}
-		principal.Components[0] = c.saslConfig.ServiceName
+		principal.Components[0] = c.saslConfig.KerberosConfig.ServiceName
 		return strings.Join(principal.Components, "/")
 	}()
 
