@@ -22,6 +22,7 @@ import (
 type SASLConfig struct {
 	Enable         bool
 	KerberosConfig *KerberosConfig
+	ServiceName    string
 }
 
 type KerberosConfig struct {
@@ -141,7 +142,14 @@ func (k *KerberosAuth) Authorize(ctx context.Context, c *Conn) error {
 	}
 	defer krbCli.Destroy()
 
-	spn := strings.Join(principal.Components, "/")
+	//spn := strings.Join(principal.Components, "/")
+	spn := func() string {
+		if len(principal.Components) == 0 {
+			return c.saslConfig.ServiceName
+		}
+		principal.Components[0] = c.saslConfig.ServiceName
+		return strings.Join(principal.Components, "/")
+	}()
 
 	if k.ticket, k.encKey, err = krbCli.GetServiceTicket(spn); err != nil {
 		return fmt.Errorf("kerberos client fails to obtain service ticket, err: %s", err)
