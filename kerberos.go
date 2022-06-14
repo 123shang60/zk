@@ -144,10 +144,14 @@ func (k *KerberosAuth) Authorize(ctx context.Context, c *Conn) error {
 
 	//spn := strings.Join(principal.Components, "/")
 	spn := func() string {
-		if len(principal.Components) == 0 {
-			return c.saslConfig.KerberosConfig.ServiceName
+		serviceName := "zookeeper"
+		if c.saslConfig.KerberosConfig.ServiceName != "" {
+			serviceName = c.saslConfig.KerberosConfig.ServiceName
 		}
-		principal.Components[0] = c.saslConfig.KerberosConfig.ServiceName
+		if len(principal.Components) == 0 {
+			return serviceName
+		}
+		principal.Components[0] = serviceName
 		return strings.Join(principal.Components, "/")
 	}()
 
